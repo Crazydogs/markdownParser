@@ -33,7 +33,7 @@ function splitByEmptyRow(data) {
  *  in: 段落，如 ['段内第一行', '段内第二行']
  *  out: 带有段落类型的段落数组，段落格式如下
  *      {
- *          type: listBlock,
+ *          type: orderListBlock,
  *          data: ['段内第一行', '段内第二行']
  *      }
  */
@@ -78,7 +78,7 @@ var regex = {
  */
 var blockReconizer = {
     // 有序列表
-    listBlock: function(block) {
+    orderListBlock: function(block) {
         return block.every(function(row, rowIndex) {
             return rowIndex ? (regex.list.test(row) || regex.indent.test(row))
                             : regex.list.test(row);
@@ -97,6 +97,40 @@ var blockReconizer = {
                 && regex.indent.test(block[0])
                 && regex.indent.test(block[block.length - 1]);
     }
-};
+;
+
+/*
+ *  列表解析，识别嵌套列表
+ *  in: 列表段落
+ *      [
+ *          '1. 一级列表',
+ *          '    一级列表内容',
+ *          '    - 二级列表',
+ *          '        可以是有序与无序嵌套',
+ *          '    一级列表内容',
+ *          '2. 一级列表'
+ *      ]
+ *  out: 
+ *      [
+ *          [
+ *              '1. 一级列表',
+ *              '    一级列表内容',
+ *              {
+ *                  type: 'unorderedList',
+ *                  data: [
+ *                      '- 二级列表',
+ *                      '   可以是有序与无序嵌套'
+ *                  ]
+ *              },
+ *              '   一级列表内容'
+ *          ],
+ *          [
+ *              '2. 一级列表'
+ *          ]
+ *      ]
+ */
+function listParser(orderListBlock) {
+    
+}
 
 module.exports = markdownParser;
