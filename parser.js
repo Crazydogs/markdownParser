@@ -72,6 +72,31 @@ var regex = {
     // 缩进
     indent: /^(    |\t)/
 }
+// 检测行类型
+function checkLineType(regexs) {
+    return function (line) {
+        return regexs.some(function (regex) {
+            return regex.test(line);
+        })
+    }
+}
+// 是否为有序列表及其内容
+var isOrderListAndContent = checkLineType([
+    regex.list,
+    regex.indent
+]);
+// 是否为无序列表及其内容
+var isUnorderListAndContent = checkLineType([
+    regex.unorderedList,
+    regex.indent
+]);
+// 为否为子列表
+var isSubListLine = checkLineType([
+    regex.subList,
+    regex.subListContent,
+    regex.subUnorderedList,
+    regex.subUnorderedListContent
+]);
 
 /*
  *  段落类型匹配器
@@ -80,14 +105,14 @@ var blockReconizer = {
     // 有序列表
     orderListBlock: function(block) {
         return block.every(function(row, rowIndex) {
-            return rowIndex ? (regex.list.test(row) || regex.indent.test(row))
+            return rowIndex ? isOrderListAndContent(row)
                             : regex.list.test(row);
         });
     },
     // 无序列表
     unorderedListBlock: function(block) {
         return block.every(function(row, rowIndex) {
-            return rowIndex ? (regex.unorderedList.test(row) || regex.indent.test(row))
+            return rowIndex ? isUnorderListAndContent(row)
                             : regex.unorderedList.test(row);
         });
     },
@@ -97,7 +122,13 @@ var blockReconizer = {
                 && regex.indent.test(block[0])
                 && regex.indent.test(block[block.length - 1]);
     }
-;
+};
+
+
+function findSubList(listItem) {
+    listItem.reduce(function (result, currentLine) {
+    }, []);
+}
 
 /*
  *  列表解析，识别嵌套列表
@@ -129,8 +160,16 @@ var blockReconizer = {
  *          ]
  *      ]
  */
-function listParser(orderListBlock) {
-    
+function listParser(listBlock) {
+    listBlock.reduce(function(splitedLine, currentLine) {
+        if (regex.list.test(currentLine) || regex.list.test(currentLine)) {
+            splitedLine.push([currentLine]);
+        } else {
+            _.last(splitedLine).push(currentLine);
+        }
+    }, []).map(function (listItem) {
+        return listItem.findSubList(listItem);
+    });
 }
 
 module.exports = markdownParser;
