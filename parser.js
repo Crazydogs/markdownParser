@@ -2,7 +2,9 @@ var _ = require('underscore-node');
 
 var markdownParser = {
     parse: function (originStr) {
-        return splitByEmptyRow(originStr).map(parseBlockType);
+        return splitByEmptyRow(originStr)
+            .map(parseBlockType)
+            .map(parseBlockByType);
     }
 } 
 
@@ -55,6 +57,17 @@ function parseBlockType(block) {
     };
 }
 
+function parseBlockByType(block) {
+    if (block.type === 'orderListBlock' || block.type === 'unorderedListBlock') {
+        return {
+            type: block.type,
+            data: listParser(block.data)
+        }
+    } else {
+        return block;
+    }
+}
+
 /*
  * 正则表达式
  */
@@ -80,13 +93,21 @@ function checkLineType(regexs) {
         })
     }
 }
+// 是否为有序列表
+var isOrderListLine = checkLineType([
+    regex.list
+]);
 // 是否为有序列表及其内容
-var isOrderListAndContent = checkLineType([
+var isOrderListAndContentLine = checkLineType([
     regex.list,
     regex.indent
 ]);
+// 是否为无序列表
+var isUnorderListLine = checkLineType([
+    regex.unorderedList
+]);
 // 是否为无序列表及其内容
-var isUnorderListAndContent = checkLineType([
+var isUnorderListAndContentLine = checkLineType([
     regex.unorderedList,
     regex.indent
 ]);
@@ -105,15 +126,15 @@ var blockReconizer = {
     // 有序列表
     orderListBlock: function(block) {
         return block.every(function(row, rowIndex) {
-            return rowIndex ? isOrderListAndContent(row)
-                            : regex.list.test(row);
+            return rowIndex ? isOrderListAndContentLine(row)
+                            : isOrderListLine(row);
         });
     },
     // 无序列表
     unorderedListBlock: function(block) {
         return block.every(function(row, rowIndex) {
-            return rowIndex ? isUnorderListAndContent(row)
-                            : regex.unorderedList.test(row);
+            return rowIndex ? isUnorderListAndContentLine(row)
+                            : isUnorderListLine(row);
         });
     },
     // 代码
@@ -126,8 +147,25 @@ var blockReconizer = {
 
 
 function findSubList(listItem) {
-    listItem.reduce(function (result, currentLine) {
-    }, []);
+    return listItem.reduce(function (result, currentLine) {
+        if (isSubListLine(currentLine)) {
+            if (_.last(result) && _.isArray(_.last(result))) {
+                _.last(result).push(currentLine.replace(regex.indent, ''));
+                return result;
+            } else {
+                result.push([currentLine.replace(regex.indent, '')]);
+                return result;
+            }
+        } else {
+            result.push(currentLine);
+            return result;
+        }
+    }, []).map(function (item) {
+        if (_.isArray(item)) {
+            return parseBlockByType(parseBlockType(item));
+        }
+        return item;
+    });
 }
 
 /*
@@ -161,14 +199,16 @@ function findSubList(listItem) {
  *      ]
  */
 function listParser(listBlock) {
-    listBlock.reduce(function(splitedLine, currentLine) {
-        if (regex.list.test(currentLine) || regex.list.test(currentLine)) {
+    return listBlock.reduce(function(splitedLine, currentLine) {
+        if (isOrderListLine(currentLine) || isUnorderListLine(currentLine)) {
             splitedLine.push([currentLine]);
+            return splitedLine;
         } else {
             _.last(splitedLine).push(currentLine);
+            return splitedLine;
         }
     }, []).map(function (listItem) {
-        return listItem.findSubList(listItem);
+        return findSubList(listItem);
     });
 }
 

@@ -23,9 +23,8 @@ var getOriginalText = new Promise(function(resolve, reject) {
 });
 
 getOriginalText.then(function(data) {
-    console.log(markdownParser.parse(data));
-        //splitByEmptyRow(data)
-        //    .map(parseBlockType)
+    var result = markdownParser.parse(data);
+    console.log(JSON.stringify(result));
 }).catch(function (err) {
     console.log(err);
 });
